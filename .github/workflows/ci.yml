@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # Reference toolchain: the one README.md documents. Output must match exactly.
+  msys2-clang64:
+    name: Windows / MSYS2 CLANG64 (build.ps1)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        id: msys2
+        with:
+          msystem: CLANG64
+          update: true
+          install: mingw-w64-clang-x86_64-clang
+
+      - name: Put clang64/bin on PATH (same as the README setup)
+        shell: pwsh
+        run: Add-Content $env:GITHUB_PATH "${{ steps.msys2.outputs.msys2-location }}\clang64\bin"
+
+      - name: Build with build.ps1
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File build.ps1
+
+      - name: Run and compare with README
+        shell: bash
+        run: bash .github/scripts/check_output.sh ./build/benchmark.exe --exact
+
+  # Other compilers via CMake. The f - f* column may differ in the last digits.
+  cmake:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux / GCC (CMake)
+            os: ubuntu-latest
+            exe: ./build/benchmark
+          - name: macOS / Apple Clang (CMake)
+            os: macos-latest
+            exe: ./build/benchmark
+          - name: Windows / MSVC (CMake)
+            os: windows-latest
+            exe: ./build/Release/benchmark.exe
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Run and compare with README
+        shell: bash
+        run: bash .github/scripts/check_output.sh ${{ matrix.exe }}
