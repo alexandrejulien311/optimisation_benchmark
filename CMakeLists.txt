@@ -19,3 +19,12 @@ if(MSVC)
 else()
     target_compile_options(benchmark PRIVATE -Wall -Wextra)
 endif()
+
+# `cmake --build build --target run` builds and runs the benchmark from the project
+# root, whatever the generator (the executable's path differs between them).
+add_custom_target(run
+    COMMAND $<TARGET_FILE:benchmark>
+    DEPENDS benchmark
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    USES_TERMINAL
+    COMMENT "Running benchmark (writes benchmark_report.html in the project root)")

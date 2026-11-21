@@ -8,20 +8,36 @@ Implementation of Gradient Descent and Adam, tested on several test functions or
 
 Originally developed for an Undergraduate project (L3 ISFA), and upgraded to explore more about the low-level language C++ using Claude Code.
 
+## Quick start
+
+Once a C++20 compiler is installed (see [Installation](#installation)), one command builds, runs, and opens the report:
+
+```powershell
+# Windows (MSYS2 CLANG64)
+powershell -ExecutionPolicy Bypass -File build.ps1 -Open
+```
+```
+# Any platform with CMake
+cmake -S . -B build
+cmake --build build --target run
+```
+
+The results are deterministic. To check that your run reproduces the reference output in this README exactly, use `build.ps1 -Check` (see [Check reproducibility](#check-reproducibility)).
+
 ## Installation
 
 The project is plain C++20 with **no external library**. You only need a C++20 compiler.
 
-### Windows (MSYS2 CLANG64, recommended, no admin rights needed)
+### Windows (MSYS2 CLANG64, recommended)
 
-1. Install [MSYS2](https://www.msys2.org/). The default location is `C:\msys64`. If you have no admin rights, pick a folder you own, such as `C:\Users\<you>\msys64`, and replace `C:\msys64` with it below.
+1. Install [MSYS2](https://www.msys2.org/). The default location is `C:\msys64`.
 2. Open the **"MSYS2 CLANG64"** terminal from the Start Menu (the prompt shows `CLANG64`) and install the toolchain:
    ```
    pacman -Syu
    pacman -S --needed mingw-w64-clang-x86_64-clang mingw-w64-clang-x86_64-lldb mingw-w64-clang-x86_64-clang-tools-extra
    ```
    `pacman -Syu` may ask you to close the terminal. If it does, reopen it and run the second command.
-3. Add `C:\msys64\clang64\bin` to your **user** `Path`. In *Start → "Edit environment variables for your account"*, select `Path`, click *Edit*, then *New*. No admin rights are needed. Open a new terminal afterwards.
+3. Add `C:\msys64\clang64\bin` to your **user** `Path`. In *Start → "Edit environment variables for your account"*, select `Path`, click *Edit*, then *New*. Open a new terminal afterwards.
 4. Check it:
    ```powershell
    clang++ --version
@@ -39,41 +55,40 @@ pacman -S --needed mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-ninja
 ### Get the code
 
 ```
-git clone <url-of-this-repository>
-cd <repository-folder>
+git clone https://github.com/alexandrejulien311/optimisation_benchmark
+cd optimisation_benchmark
 ```
 
-## First run
+## Build and run
 
-### Build
+### Windows: `build.ps1`
 
-**Windows (PowerShell, from the project root):**
+From PowerShell (the script works from any folder, because it uses paths relative to the project root):
 ```powershell
-powershell -ExecutionPolicy Bypass -File build.ps1
+powershell -ExecutionPolicy Bypass -File build.ps1 -Run
 ```
-This compiles `main.cpp` and every `.cpp` under `src/` into `build/benchmark.exe`. `-ExecutionPolicy Bypass` applies only to this command and lets Windows run the local script. Options:
+This compiles `main.cpp` and every `.cpp` under `src/` into `build/benchmark.exe`, then runs it from the project root. `-ExecutionPolicy Bypass` applies only to this command and lets Windows run the local script without changing any system setting. Flags can be combined:
 
 | Flag | Effect |
 |---|---|
+| *(none)* | Build only (`-O2`) |
+| `-Run` | Build, then run the benchmark |
+| `-Open` | Build, run, and open `benchmark_report.html` in the browser |
+| `-Check` | Build, run, and compare the output with the reference below. Exits with code 1 on any difference |
 | `-Debug` | No optimisation (`-O0`), for stepping through with LLDB |
 | `-Static` | Standalone `.exe` that runs on a machine without MSYS2 |
 
-**With CMake (any platform):**
+The script prints the compiler version first, so a log of the run records which toolchain produced it.
+
+### Any platform: CMake
+
 ```
 cmake -S . -B build
-cmake --build build --config Release
+cmake --build build --target run
 ```
-Add `-G Ninja` to the first command if Ninja is installed. `--config Release` only matters for Visual Studio, which can hold several build types in one folder. Other generators ignore it.
+The `run` target builds the program if needed and runs it from the project root, whatever the generator. Add `-G Ninja` to the first command if Ninja is installed. To build without running, use `cmake --build build --config Release`. The executable is then `build/benchmark` (`.exe` on Windows), or `build/Release/benchmark.exe` with Visual Studio.
 
-### Run
-
-Run the program from the project root. The path depends on how you built it:
-
-| Built with | Command |
-|---|---|
-| `build.ps1` (Windows) | `./build/benchmark.exe` |
-| CMake + Ninja or Makefiles (Linux, macOS, MSYS2) | `./build/benchmark` (`.exe` on Windows) |
-| CMake + Visual Studio (default generator on Windows) | `./build/Release/benchmark.exe` |
+### Expected output
 
 The program runs gradient descent and Adam on every benchmark function. It runs them in 2-D from fixed start points, then the n-dimensional functions in 10-D from a random start drawn with seed 42. Everything is deterministic, so you should see exactly this:
 
@@ -108,7 +123,18 @@ Report written to benchmark_report.html
 
 This output was produced with clang 23.1 / libc++ (MSYS2 CLANG64). With another compiler or standard library, the last digits of very small values (around 1e-16) may differ, because `std::exp`, `std::cos`, etc. are not guaranteed to round identically everywhere. The iteration counts, statuses and conclusions stay the same.
 
+### Check reproducibility
+
+All inputs are fixed: hard-coded start points and hyper-parameters, a `std::mt19937` seeded with 42 (its sequence is specified by the C++ standard), and a hand-written uniform draw instead of `std::uniform_real_distribution`, whose output varies between standard libraries. So the same toolchain always gives the same output.
+
+- **Reference toolchain (MSYS2 CLANG64):** `build.ps1 -Check` compares the whole output with the block above, character for character.
+- **Other compilers (CMake):** `bash .github/scripts/check_output.sh <path-to-benchmark>` compares every column except `f - f*`.
+
+The CI (`.github/workflows/ci.yml`) runs both checks on every push: `build.ps1 -Check` on Windows/MSYS2, and the CMake build with GCC (Linux), Apple Clang (macOS) and MSVC (Windows).
+
 ### Open the report
+
+`build.ps1 -Open` opens it for you. Otherwise:
 
 ```powershell
 start benchmark_report.html     # Windows
@@ -129,13 +155,16 @@ The report is a single self-contained HTML file with no internet access needed. 
 | `no member named 'format' in namespace 'std'` | The compiler is not in C++20 mode; build with `build.ps1` / CMake, or pass `-std=c++20` |
 | The `.exe` complains about missing `libc++.dll` | Run it from a terminal where `C:\msys64\clang64\bin` is on `Path`, or rebuild with `build.ps1 -Static` |
 | "running scripts is disabled on this system" | Use `powershell -ExecutionPolicy Bypass -File build.ps1` as shown above |
+| `build.ps1 -Check` reports differences | Check that the first line printed is a clang/MSYS2 CLANG64 compiler. With another toolchain, only the last digits of tiny `f - f*` values may differ |
 
 ## Project structure
 
 ```
 main.cpp                          benchmark driver: runs GD and Adam, writes the report
-build.ps1                         Windows build script (clang++, no CMake needed)
-CMakeLists.txt                    cross-platform build
+build.ps1                         Windows build/run/check script (clang++, no CMake needed)
+CMakeLists.txt                    cross-platform build, with a `run` target
+.github/workflows/ci.yml          builds and checks the output on 4 toolchains
+.github/scripts/check_output.sh   compares a run with the expected output in this README
 src/optimisation_project/
   benchmark_functions/            BenchmarkFunction base class + Sphere, Rosenbrock,
                                   Rastrigin, Ackley, Booth, Beale, Himmelblau
@@ -144,5 +173,3 @@ src/optimisation_project/
   report/                         HTML/SVG report generator
 docs/report_preview.png           screenshot used in this README
 ```
-
-The code deliberately uses pointers in several ways: raw `const double*` / `double*` buffers, pointer arithmetic, owning `new[]`/`delete[]` buffers (with the rule of five) in `Adam`, `std::unique_ptr` for ownership, and non-owning base-class pointers for polymorphism.

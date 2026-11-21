@@ -24,13 +24,10 @@ jobs:
         shell: pwsh
         run: Add-Content $env:GITHUB_PATH "${{ steps.msys2.outputs.msys2-location }}\clang64\bin"
 
-      - name: Build with build.ps1
+      # Same command as in README.md: build, run, compare with README exactly.
+      - name: Build, run and compare with README (build.ps1 -Check)
         shell: pwsh
-        run: powershell -ExecutionPolicy Bypass -File build.ps1
-
-      - name: Run and compare with README
-        shell: bash
-        run: bash .github/scripts/check_output.sh ./build/benchmark.exe --exact
+        run: powershell -ExecutionPolicy Bypass -File build.ps1 -Check
 
   # Other compilers via CMake. The f - f* column may differ in the last digits.
   cmake:

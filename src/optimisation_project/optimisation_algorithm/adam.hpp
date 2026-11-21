@@ -10,7 +10,7 @@
 //
 // The moment buffers m and v are owned through raw pointers allocated with
 // new[] and released with delete[], to show manual memory management. In
-// production code a std::vector<double> would do this for you.
+// production code a std::vector<double> would do this.
 //
 // Owning raw pointers force the "rule of five": the compiler-generated copy
 // would copy the *pointers* (shallow copy), so two Adam objects would delete[]
